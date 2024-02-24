@@ -26,3 +26,67 @@ resource "aws_internet_gateway" "mtc_internet_gateway" {
     Name = "dev-igw"
   }
 }
+
+resource "aws_route_table" "mtc_public_rt" {
+  vpc_id = aws_vpc.mtc_vpc.id
+
+  tags = {
+    Name = "dev-public_rt"
+  }
+}
+
+resource "aws_route" "default_route" {
+  route_table_id         = aws_route_table.mtc_public_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.mtc_internet_gateway.id
+}
+
+resource "aws_route_table_association" "mtc_public_assoc" {
+  subnet_id      = aws_subnet.mtc_public_subnet.id
+  route_table_id = aws_route_table.mtc_public_rt.id
+}
+
+resource "aws_security_group" "mtc_sg" {
+  name        = "dev-sg"
+  description = "Allow inbound traffic"
+  vpc_id      = aws_vpc.mtc_vpc.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all inbound traffic"
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all egress traffic"
+  }
+}
+
+resource "aws_key_pair" "mtc_key" {
+  key_name   = "dev-key"
+  public_key = var.public_key
+}
+
+resource "aws_instance" "dev_node" {
+  ami                         = data.aws_ami.server_ami.id
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.mtc_public_subnet.id
+  key_name                    = aws_key_pair.mtc_key.key_name
+  associate_public_ip_address = true
+  security_groups             = [aws_security_group.mtc_sg.id]
+  user_data                   = file("userdata.tpl")
+
+  root_block_device {
+    volume_type = "gp2"
+    volume_size = 10
+  }
+
+  tags = {
+    Name = "dev-node"
+  }
+}
