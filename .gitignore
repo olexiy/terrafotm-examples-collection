@@ -4,7 +4,7 @@
 # .tfstate files
 *.tfstate
 *.tfstate.*
-
+run_config
 # Crash log files
 crash.log
 crash.*.log
